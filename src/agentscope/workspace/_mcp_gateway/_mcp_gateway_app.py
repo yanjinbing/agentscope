@@ -41,6 +41,26 @@ from fastapi.responses import PlainTextResponse
 from agentscope.mcp import MCPClient
 
 
+def _describe_exception(error: BaseException) -> str:
+    """Render an exception as something a person can act on.
+
+    Async transports run inside task groups, so what surfaces is often an
+    ``ExceptionGroup`` whose own message is ``"unhandled errors in a
+    TaskGroup (1 sub-exception)"`` — of no use to anyone. Worse, anyio
+    raises that group with ``from None``, so the real cause (an upstream
+    401, a refused connection) is not on the ``__cause__`` chain at all:
+    it is a leaf of the group. Report the leaves, then.
+
+    Kept local rather than imported from ``agentscope._utils._common``:
+    this script is copied into a sandbox whose ``agentscope`` is installed
+    independently of the host's, and a missing private helper would take
+    the whole gateway down.
+    """
+    if isinstance(error, BaseExceptionGroup):
+        return "; ".join(_describe_exception(sub) for sub in error.exceptions)
+    return str(error).strip() or type(error).__name__
+
+
 class _State:
     """Mutable runtime state shared by FastAPI routes."""
 
@@ -150,7 +170,10 @@ def _build_app(
             except ValueError as e:
                 raise HTTPException(400, str(e)) from e
             except Exception as e:  # noqa: BLE001
-                raise HTTPException(500, f"connect failed: {e}") from e
+                raise HTTPException(
+                    500,
+                    f"connect failed: {_describe_exception(e)}",
+                ) from e
         return {"ok": True}
 
     @app.delete("/mcps/{name}")
@@ -220,7 +243,7 @@ def _build_app(
         except ValueError as e:
             raise HTTPException(404, str(e)) from e
         except Exception as e:  # noqa: BLE001
-            raise HTTPException(500, str(e)) from e
+            raise HTTPException(500, _describe_exception(e)) from e
         return {"chunk": chunk.model_dump(mode="json")}
 
     return app
