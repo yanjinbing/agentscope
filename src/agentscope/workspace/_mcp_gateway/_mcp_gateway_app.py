@@ -35,6 +35,7 @@ import asyncio
 import secrets
 from typing import Any
 
+import httpx2
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 
@@ -67,6 +68,41 @@ class _State:
     def __init__(self) -> None:
         self.clients: dict[tuple[str, str], dict[str, MCPClient]] = {}
         self.lock = asyncio.Lock()
+
+
+async def _probe_http_mcp(
+    spec: dict[str, Any],
+    runtime_headers: dict[str, str] | None,
+) -> tuple[int, str] | None:
+    """Recover HTTP details hidden by the MCP client's JSON-RPC wrapper."""
+    config = spec.get("mcp_config")
+    if not isinstance(config, dict) or config.get("type") != "http_mcp":
+        return None
+    url = str(config.get("url", ""))
+    if not url:
+        return None
+    headers = dict(config.get("headers") or {})
+    headers.update(runtime_headers or {})
+    headers.setdefault("Accept", "application/json, text/event-stream")
+    headers.setdefault("Content-Type", "application/json")
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "agentscope-mcp-gateway", "version": "2"},
+        },
+    }
+    try:
+        async with httpx2.AsyncClient(timeout=10) as http_client:
+            response = await http_client.post(url, headers=headers, json=request)
+    except Exception:
+        return None
+    if response.status_code >= 400:
+        return response.status_code, response.text
+    return None
 
 
 async def _build_client(
@@ -170,6 +206,13 @@ def _build_app(
             except ValueError as e:
                 raise HTTPException(400, str(e)) from e
             except Exception as e:  # noqa: BLE001
+                upstream_error = await _probe_http_mcp(body, runtime_headers)
+                if upstream_error is not None:
+                    status_code, detail = upstream_error
+                    raise HTTPException(
+                        502,
+                        f"upstream MCP returned HTTP {status_code}: {detail[:500]}",
+                    ) from e
                 raise HTTPException(
                     500,
                     f"connect failed: {_describe_exception(e)}",
