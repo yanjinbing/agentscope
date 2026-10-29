@@ -51,6 +51,10 @@ if TYPE_CHECKING:
     from ..tool import BackendBase, ExecResult
 
 
+class MCPNotReadyError(RuntimeError):
+    """The gateway is still starting an asynchronous stdio MCP."""
+
+
 # ── tool ───────────────────────────────────────────────────────────
 
 
@@ -381,6 +385,8 @@ class GatewayMCPClient(MCPClient):
                 "session_id": self._session_id,
             },
         )
+        if _is_mcp_not_ready(status, body):
+            raise MCPNotReadyError(_safe_detail(status, body))
         if status >= 400:
             raise RuntimeError(
                 f"gateway failed to list tools for MCP {self.name!r}: "
@@ -841,3 +847,13 @@ def _safe_detail(status: int, body: bytes) -> str:
     if isinstance(data, dict) and "detail" in data:
         return f"HTTP {status}: {data['detail']}"
     return f"HTTP {status}: {str(data)[:200]}"
+
+
+def _is_mcp_not_ready(status: int, body: bytes) -> bool:
+    """Return whether a gateway response is the temporary startup conflict."""
+    if status != 409:
+        return False
+    try:
+        return json.loads(body).get("error", {}).get("code") == "mcp_not_ready"
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return False
