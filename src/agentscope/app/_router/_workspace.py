@@ -29,6 +29,7 @@ from .._service._workspace import SkillUploadError, UploadManifest
 from ..storage import MCPRecord, StorageBase
 from ...mcp import MCPClient
 from ...skill import Skill
+from ...workspace._gateway_client import MCPNotReadyError
 from ._schema import (
     AddFromLibraryRequest,
     AddFromLibraryResponse,
@@ -80,14 +81,23 @@ async def list_mcps(
             results.append(
                 MCPClientStatus(
                     **base,
+                    status="ready",
                     is_healthy=True,
                     tools=tools,
+                ),
+            )
+        except MCPNotReadyError:
+            results.append(
+                MCPClientStatus(
+                    **base,
+                    status="starting",
                 ),
             )
         except Exception as e:
             results.append(
                 MCPClientStatus(
                     **base,
+                    status="failed",
                     is_healthy=False,
                     error=_describe_exception(e),
                 ),

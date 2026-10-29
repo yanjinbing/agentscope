@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Schemas for equipping a workspace with MCPs and skills."""
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from ....mcp import MCPClient
@@ -112,6 +114,10 @@ class ToolInfo(BaseModel):
 class MCPClientStatus(MCPClient):
     """MCPClient enriched with live tool list and health status."""
 
+    status: Literal["queued", "starting", "ready", "failed"] = Field(
+        default="ready",
+        description="Lifecycle state: queued, starting, ready, or failed.",
+    )
     is_healthy: bool = False
     tools: list[ToolInfo] = Field(default_factory=list)
     error: str | None = Field(
