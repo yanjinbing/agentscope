@@ -35,6 +35,27 @@ from agentscope.message import (
 class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
     """Comprehensive tests for OpenAI Responses API formatters."""
 
+    async def test_assistant_output_text_has_explicit_message_type(
+        self,
+    ) -> None:
+        """Assistant output_text history must identify itself as a message."""
+        result = await OpenAIResponseFormatter().format(
+            [AssistantMsg(name="assistant", content="Hello")],
+        )
+
+        self.assertListEqual(
+            result,
+            [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {"type": "output_text", "text": "Hello"},
+                    ],
+                },
+            ],
+        )
+
     async def asyncSetUp(self) -> None:
         """Set up shared message fixtures and expected ground-truth dicts."""
         _img_src = URLSource(
@@ -138,6 +159,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                 ],
             },
             {
+                "type": "message",
                 "role": "assistant",
                 "content": [
                     {
@@ -156,6 +178,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                 ],
             },
             {
+                "type": "message",
                 "role": "assistant",
                 "content": [
                     {
@@ -185,6 +208,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                 "output": "The capital of Japan is Tokyo.",
             },
             {
+                "type": "message",
                 "role": "assistant",
                 "content": [
                     {
@@ -215,6 +239,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
         )
 
         self._gt_trailing_asst = {
+            "type": "message",
             "role": "assistant",
             "content": [
                 {
@@ -427,6 +452,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
         self.assertListEqual(
             [
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "reply"},
@@ -462,6 +488,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "reply"},
@@ -522,6 +549,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
             [
                 reasoning_item_raw,
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "reply"},
@@ -613,6 +641,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "reply"},
@@ -665,6 +694,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_1"},
@@ -690,6 +720,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_2"},
@@ -731,6 +762,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_1"},
@@ -745,6 +777,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "content": [],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_2"},
@@ -884,6 +917,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
         self.assertListEqual(
             [
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_1"},
@@ -918,6 +952,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "output": "result_2",
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_2"},
@@ -946,6 +981,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     "output": "result_4",
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {"type": "output_text", "text": "text_3"},
@@ -972,6 +1008,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
         self.assertListEqual(
             [
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {
@@ -990,6 +1027,7 @@ class TestOpenAIResponseFormatter(IsolatedAsyncioTestCase):
                     ],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {

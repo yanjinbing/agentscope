@@ -133,6 +133,7 @@ class TestOpenAIResponseToolResultFormatter(IsolatedAsyncioTestCase):
                     ],
                 },
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {

@@ -183,6 +183,26 @@ class OpenAIResponseFormatter(_OpenAIResponseFormatterBase):
       echoed back verbatim as required by reasoning models (e.g. ``o1``).
     """
 
+    @staticmethod
+    def _message_item(
+        role: str,
+        content: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Build a Responses API message input item.
+
+        Responses-compatible providers require assistant messages containing
+        ``output_text`` blocks to declare their item type explicitly.
+        """
+        item: dict[str, Any] = {
+            "role": role,
+            "content": content,
+        }
+        if role == "assistant" and any(
+            part.get("type") == "output_text" for part in content
+        ):
+            item["type"] = "message"
+        return item
+
     # pylint: disable=too-many-branches
     async def format(
         self,
@@ -228,20 +248,14 @@ class OpenAIResponseFormatter(_OpenAIResponseFormatterBase):
                     if function_calls:
                         if content_parts:
                             items.append(
-                                {
-                                    "role": msg.role,
-                                    "content": content_parts,
-                                },
+                                self._message_item(msg.role, content_parts),
                             )
                             content_parts = []
                         items.extend(function_calls)
                         function_calls = []
                     elif content_parts:
                         items.append(
-                            {
-                                "role": msg.role,
-                                "content": content_parts,
-                            },
+                            self._message_item(msg.role, content_parts),
                         )
                         content_parts = []
 
@@ -300,10 +314,7 @@ class OpenAIResponseFormatter(_OpenAIResponseFormatterBase):
                         reasoning_item_ids.add(reasoning_item_id)
                         if content_parts and block.thinking:
                             items.append(
-                                {
-                                    "role": msg.role,
-                                    "content": content_parts,
-                                },
+                                self._message_item(msg.role, content_parts),
                             )
                             content_parts = []
                         # Empty reasoning blocks can arrive after text deltas
@@ -357,20 +368,14 @@ class OpenAIResponseFormatter(_OpenAIResponseFormatterBase):
                     if function_calls:
                         if content_parts:
                             items.append(
-                                {
-                                    "role": msg.role,
-                                    "content": content_parts,
-                                },
+                                self._message_item(msg.role, content_parts),
                             )
                             content_parts = []
                         items.extend(function_calls)
                         function_calls = []
                     elif content_parts:
                         items.append(
-                            {
-                                "role": msg.role,
-                                "content": content_parts,
-                            },
+                            self._message_item(msg.role, content_parts),
                         )
                         content_parts = []
 
@@ -393,18 +398,12 @@ class OpenAIResponseFormatter(_OpenAIResponseFormatterBase):
             if function_calls:
                 if content_parts:
                     items.append(
-                        {
-                            "role": msg.role,
-                            "content": content_parts,
-                        },
+                        self._message_item(msg.role, content_parts),
                     )
                 items.extend(function_calls)
             elif content_parts:
                 items.append(
-                    {
-                        "role": msg.role,
-                        "content": content_parts,
-                    },
+                    self._message_item(msg.role, content_parts),
                 )
 
             i += 1

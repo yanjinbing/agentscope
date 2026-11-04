@@ -520,6 +520,7 @@ class TestOpenAIResponseNonStream(IsolatedAsyncioTestCase):
             [
                 reasoning_item_raw,
                 {
+                    "type": "message",
                     "role": "assistant",
                     "content": [
                         {
