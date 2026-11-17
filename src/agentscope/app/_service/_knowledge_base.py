@@ -766,11 +766,14 @@ class KnowledgeBaseService:
         2. Storage record delete.
         3. Blob delete (idempotent).
 
-        A failure at step 1 surfaces as an exception to the caller and
-        the record + blob are left untouched, so a retry sees the same
-        state.  Failures at steps 2/3 leave a small amount of orphan
-        data but the user-visible deletion has already succeeded from
-        the vector store's point of view.
+        A failure at step 1 normally surfaces as an exception to the
+        caller and the record + blob are left untouched, so a retry sees
+        the same state.  If the vector runtime itself is already gone
+        (for example, its credential was deleted), vector cleanup is
+        skipped because the missing runtime has nothing left to delete.
+        Failures at steps 2/3 leave a small amount of orphan data but the
+        user-visible deletion has already succeeded from the vector
+        store's point of view.
 
         Args:
             user_id (`str`):
@@ -796,8 +799,24 @@ class KnowledgeBaseService:
             # document is already gone.
             return
 
-        knowledge = await self._resolve_knowledge(user_id, knowledge_base_id)
-        await knowledge.delete_document(document_id)
+        # The edit check and document lookup above already establish that
+        # the caller may delete this record. Resolve the vector runtime
+        # against the owner directly so a stale/missing embedding credential
+        # cannot prevent cleanup of the document metadata and blob.
+        try:
+            knowledge = await self._manager.get_knowledge(
+                owner_id,
+                knowledge_base_id,
+            )
+        except KnowledgeBaseNotFoundError:
+            logger.warning(
+                "Skipping vector cleanup for missing knowledge base %s "
+                "while deleting document %s.",
+                knowledge_base_id,
+                document_id,
+            )
+        else:
+            await knowledge.delete_document(document_id)
         await self._storage.delete_knowledge_document(
             owner_id,
             knowledge_base_id,

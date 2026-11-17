@@ -31,6 +31,12 @@ class MCPCard(BaseModel):
         description="The id of the hub this card came from.",
     )
 
+    resource_type: Literal["mcp", "connector"] = Field(
+        default="mcp",
+        title="Resource Type",
+        description="Whether this card installs an MCP or a Connector.",
+    )
+
     id: str = Field(
         default="",
         title="ID",

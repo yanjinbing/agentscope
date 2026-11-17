@@ -8,7 +8,7 @@ never merged across hubs, which keeps ranking a per-hub concern.
 Installing is user-level for both kinds — nothing here touches a
 workspace. See ``_mcp.py`` / ``_skill.py`` for the libraries it writes.
 """
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -143,7 +143,7 @@ async def install_mcp(
     user_id: str = Depends(get_current_user_id),
     hubs: dict[str, MCPHubBase] = Depends(get_mcp_hubs),
     storage: StorageBase = Depends(get_storage),
-) -> MCPView:
+) -> MCPView | dict[str, Any]:
     """Fill a card's template and add the result to the user's library.
 
     Installing is a user-level act with no workspace involved — putting
@@ -157,6 +157,12 @@ async def install_mcp(
     its command here instead of in the workspace sandbox.
     """
     hub = _pick_hub(hubs, hub_id)
+    install_card = getattr(hub, "install_card", None)
+    if install_card is not None:
+        try:
+            return await install_card(user_id, card_id, body.values)
+        except KeyError:
+            pass
     try:
         card = await hub.get_mcp(user_id, card_id)
     except KeyError as e:

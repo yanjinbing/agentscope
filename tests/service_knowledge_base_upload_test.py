@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 from unittest.async_case import IsolatedAsyncioTestCase
 from unittest.mock import patch
+from unittest.mock import AsyncMock
 
 import fakeredis.aioredis
 from fastapi.testclient import TestClient
@@ -493,6 +494,37 @@ class KnowledgeBaseUploadFlowTest(IsolatedAsyncioTestCase):
                 headers=headers,
             )
             self.assertEqual(resp.json()["documents"], [])
+
+            # Deleting an already-removed document remains successful.
+            resp = client.delete(
+                f"/knowledge_bases/{self._kb_id}/documents/{document_id}",
+                headers=headers,
+            )
+            self.assertEqual(resp.status_code, 204, resp.text)
+
+    async def test_delete_succeeds_when_vector_knowledge_is_missing(self) -> None:
+        """A stale vector runtime must not block document cleanup."""
+        headers = {"X-User-ID": "user-1"}
+        with TestClient(self._app) as client:
+            resp = client.post(
+                f"/knowledge_bases/{self._kb_id}/documents",
+                files={"file": ("stale.txt", b"stale", "text/plain")},
+                headers=headers,
+            )
+            self.assertEqual(resp.status_code, 201, resp.text)
+            document_id = resp.json()["document_id"]
+
+            service = self._app.state.knowledge_base_service
+            service._manager.get_knowledge = AsyncMock(
+                side_effect=KnowledgeBaseNotFoundError(
+                    "credential for knowledge base not found",
+                ),
+            )
+            resp = client.delete(
+                f"/knowledge_bases/{self._kb_id}/documents/{document_id}",
+                headers=headers,
+            )
+            self.assertEqual(resp.status_code, 204, resp.text)
 
     async def test_status_for_unknown_id_is_silently_skipped(self) -> None:
         """Asking for a non-existent doc returns an empty items list."""
