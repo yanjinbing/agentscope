@@ -59,7 +59,6 @@ from ._constants import (
 )
 from ._e2b_backend import E2BBackend
 
-
 # ── the workspace ──────────────────────────────────────────────────
 
 
@@ -225,7 +224,8 @@ class E2BWorkspace(SandboxedWorkspaceBase):
             )
         else:
             merged_metadata = {
-                METADATA_WORKSPACE_ID_KEY: self.workspace_id,
+                METADATA_WORKSPACE_ID_KEY   : self.workspace_id,
+                "agentdesk.workspace.kind"  : "desktop",
                 **self.sandbox_metadata,
             }
             create_kwargs: dict[str, Any] = {
@@ -288,7 +288,10 @@ class E2BWorkspace(SandboxedWorkspaceBase):
         from e2b.sandbox.sandbox_api import SandboxQuery
 
         query = SandboxQuery(
-            metadata={METADATA_WORKSPACE_ID_KEY: self.workspace_id},
+            metadata={
+                METADATA_WORKSPACE_ID_KEY: self.workspace_id,
+                "agentdesk.workspace.kind": "desktop",
+            },
             state=[SandboxState.PAUSED, SandboxState.RUNNING],
         )
 
